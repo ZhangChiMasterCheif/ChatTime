@@ -61,10 +61,12 @@ def load_weekly_hosp() -> pd.DataFrame:
     full = pd.date_range(daily_wide.index.min(), daily_wide.index.max(), freq="D")
     daily_wide = daily_wide.reindex(full)
 
-    # weekly sum, anchored to weeks ending Sunday → label by Monday (week_start)
-    # `label="left"` puts the index at the Monday that starts the week.
-    weekly = daily_wide.resample("W-SUN", label="left", closed="left").sum(min_count=7)
-    # weekly.index is now Mondays of each week_start
+    # Aggregate by Monday-of-week to match the text data's `week_start` (Monday).
+    # For each date, the Monday-anchored week is date - dayofweek days.
+    mondays = daily_wide.index - pd.to_timedelta(daily_wide.index.dayofweek, unit="D")
+    weekly  = daily_wide.groupby(mondays).sum(min_count=7)
+    weekly.index = pd.to_datetime(weekly.index)
+    weekly.index.name = "week_start"
 
     return weekly
 
