@@ -4,5 +4,4 @@ huggingface-hub==0.33.1
 numpy==2.1.2
 pandas==2.3.0
 scikit-learn==1.7.0
-torch==2.7.1+cu118
 transformers==4.53.0
