@@ -70,7 +70,6 @@ METHODS = [
     ("CQR",           "with_text"),
     ("Codebook-CQR",  "no_text"),
     ("Codebook-CQR",  "with_text"),
-    ("Text-CQR",      "with_text"),
     ("PID",           "no_text"),
     ("PID",           "with_text"),
 ]
