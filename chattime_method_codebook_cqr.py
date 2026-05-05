@@ -70,9 +70,11 @@ def to_bins(values: np.ndarray, scaler: MinMaxScaler, boundaries: np.ndarray
 # ---------------------------------------------------------------------------
 
 def codebook_scores(bin_lo, bin_hi, true_bins):
-    """CQR-style score in bin index space. Returns (N,)."""
-    per_step = np.maximum(bin_lo - true_bins, true_bins - bin_hi)
-    return per_step.max(axis=1)
+    """
+    Per-step CQR score in bin-index space. Returns (N * pred_len,).
+    Same per-step semantics as cqr_scores in chattime_method_cqr.py.
+    """
+    return np.maximum(bin_lo - true_bins, true_bins - bin_hi).flatten()
 
 
 def apply_codebook_correction(bin_lo, bin_hi, Q_hat, n_tokens):

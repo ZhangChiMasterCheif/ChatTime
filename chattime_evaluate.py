@@ -194,9 +194,11 @@ def run_codebook_cqr(cal_s, test_s, cal_ctx, test_ctx, cal_fut, test_fut,
 
 
 def run_text_cqr(cal_s, test_s, cal_fut, test_fut, cal_embs, test_embs, alpha):
+    pred_len = cal_fut.shape[1]
+
     cal_lo  = np.nanquantile(cal_s, alpha / 2,     axis=1)
     cal_hi  = np.nanquantile(cal_s, 1 - alpha / 2, axis=1)
-    scores  = cqr_scores(cal_lo, cal_hi, cal_fut)
+    scores  = cqr_scores(cal_lo, cal_hi, cal_fut)            # (N * pred_len,)
 
     test_lo = np.nanquantile(test_s, alpha / 2,     axis=1)
     test_hi = np.nanquantile(test_s, 1 - alpha / 2, axis=1)
@@ -205,8 +207,9 @@ def run_text_cqr(cal_s, test_s, cal_fut, test_fut, cal_embs, test_embs, alpha):
     lo_all = np.empty_like(test_lo)
     hi_all = np.empty_like(test_hi)
     for j in range(N):
-        w        = text_weights(test_embs[j], cal_embs)
-        Q_hat_j  = weighted_quantile(scores, w, alpha)
+        w_window = text_weights(test_embs[j], cal_embs)        # (N_cal,)
+        w_step   = np.repeat(w_window, pred_len)               # (N_cal * pred_len,)
+        Q_hat_j  = weighted_quantile(scores, w_step, alpha)
         lo_all[j] = test_lo[j] - Q_hat_j
         hi_all[j] = test_hi[j] + Q_hat_j
     return lo_all, hi_all
