@@ -33,15 +33,9 @@ from chattime_method_naive import (
 # ---------------------------------------------------------------------------
 
 def cqr_scores(q_lo: np.ndarray, q_hi: np.ndarray, futures: np.ndarray) -> np.ndarray:
-    """
-    Per-step CQR score: each (window, horizon) pair contributes one calibration
-    sample.  Returns (N * pred_len,).
-
-    With per-step scoring the conformal Q̂ is calibrated for marginal per-step
-    coverage (≥ 1−α at every horizon), instead of the much stricter joint
-    "all horizons inside" coverage produced by max-aggregating.
-    """
-    return np.maximum(q_lo - futures, futures - q_hi).flatten()
+    """s_i = max over horizon of max(q_lo − y, y − q_hi). Returns (N,)."""
+    per_step = np.maximum(q_lo - futures, futures - q_hi)
+    return per_step.max(axis=1)
 
 
 def cqr_quantile(scores: np.ndarray, alpha: float) -> float:
