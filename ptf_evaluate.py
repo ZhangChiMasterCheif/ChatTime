@@ -42,6 +42,7 @@ from chattime_method_codebook_cqr import (
 from chattime_method_text_cqr import (
     embed_texts, text_weights, weighted_quantile, SBERT_MODEL,
 )
+import chattime_method_pid as pid_mod
 
 # ---------------------------------------------------------------------------
 # Config
@@ -70,6 +71,8 @@ METHODS = [
     ("Codebook-CQR",  "no_text"),
     ("Codebook-CQR",  "with_text"),
     ("Text-CQR",      "with_text"),
+    ("PID",           "no_text"),
+    ("PID",           "with_text"),
 ]
 
 
@@ -336,6 +339,10 @@ def main(plots_only: bool, reset: bool):
                 lo, hi = run_text_cqr(
                     cal_s, test_s, cal_fut_arr, test_fut_arr,
                     cal_embs, test_embs, alpha,
+                )
+            elif method == "PID":
+                lo, hi = pid_mod.run_pid(
+                    cal_s, test_s, cal_fut_arr, test_fut_arr, alpha,
                 )
             else:
                 raise ValueError(method)
