@@ -56,6 +56,7 @@ from chattime_method_text_cqr import (
     embed_texts, text_weights, weighted_quantile, SBERT_MODEL,
 )
 import ptf_evaluate as pe   # reuse run_naive/run_cqr/run_codebook_cqr/run_text_cqr
+import chattime_method_pid as pid_mod
 
 # ---------------------------------------------------------------------------
 # Config — match ptf_evaluate so window selection is identical
@@ -207,10 +208,7 @@ def main(reset: bool):
 
     # --- Decide what to run ---
     df_existing = pe.load_existing()
-    needed = [m for m in ["Naive", "CQR", "Codebook-CQR", "Text-CQR"]
-              for a in ALPHAS
-              if not already_done_shuffled(df_existing, m, a)]
-    needed = [(m, a) for m in ["Naive", "CQR", "Codebook-CQR", "Text-CQR"]
+    needed = [(m, a) for m in ["Naive", "CQR", "Codebook-CQR", "Text-CQR", "PID"]
               for a in ALPHAS
               if not already_done_shuffled(df_existing, m, a)]
 
@@ -254,6 +252,10 @@ def main(reset: bool):
                 lo, hi = pe.run_text_cqr(
                     cal_s, test_s, cal_fut_arr, test_fut_arr,
                     cal_embs, test_embs, alpha,
+                )
+            elif method == "PID":
+                lo, hi = pid_mod.run_pid(
+                    cal_s, test_s, cal_fut_arr, test_fut_arr, alpha,
                 )
             m = compute_metrics(lo, hi, test_fut_arr)
             append_shuffled(method, alpha, m["coverage"], m["width"])
