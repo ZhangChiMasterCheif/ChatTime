@@ -41,7 +41,7 @@ from chattime_method_cqr import cqr_scores, cqr_quantile, apply_correction
 # ---------------------------------------------------------------------------
 
 SBERT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"   # 22M params, fast
-TEMPERATURE = 5.0   # softmax-style temperature on cosine similarity
+TEMPERATURE = 1.0   # softmax-style temperature on cosine similarity
 
 
 # ---------------------------------------------------------------------------
