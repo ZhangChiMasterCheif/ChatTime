@@ -268,6 +268,7 @@ def table_main(windows):
                 records.append(
                     dict(
                         text=cond, method=name, alpha=alpha, nominal=round(1 - alpha, 2),
+                        K=int(test_s.shape[1]),
                         oracle_finite_K=round(
                             fk.oracle_coverage(test_s.shape[1], alpha), 4),
                         nominal_attainable=(1 - alpha) <= fk.max_order_statistic_coverage(
@@ -330,24 +331,48 @@ def table_text_contrasts(rows, test_fut, alpha=0.10):
 # ---------------------------------------------------------------------------
 
 def table_k_sweep(test_fut, alpha=0.10, n_rep=10, seed=0):
+    """
+    Sample-budget sweep, plus a MATCHED-K comparison across text conditions.
+
+    The matched-K table exists because the cached conditions do NOT share a
+    sample budget: no_text / with_text / shuffled_text hold 64 paths per window
+    while random_text holds 16. Comparing naive widths across those conditions
+    at their native budgets confounds the text effect with a Monte Carlo effect,
+    since fewer samples give systematically narrower empirical quantiles. The
+    matched rows subsample every condition to the smallest available K so the
+    contrast is like-for-like.
+    """
     rng = np.random.default_rng(seed)
-    out = []
+    budgets = {}
     for cond in CONDITIONS:
         _, test_s = load_condition(cond)
-        if test_s is None:
-            continue
-        K_max = test_s.shape[1]
-        for K in [4, 8, 12, K_max]:
-            if K > K_max:
-                continue
+        if test_s is not None:
+            budgets[cond] = test_s.shape[1]
+    if not budgets:
+        return pd.DataFrame(), pd.DataFrame(), {}
+
+    K_common = min(budgets.values())
+
+    out, matched = [], []
+    for cond, K_max in budgets.items():
+        _, test_s = load_condition(cond)
+        grid = sorted({4, 8, 12, K_common, K_max} & set(range(1, K_max + 1)))
+        for K in grid:
             for r in range(n_rep):
                 idx = rng.choice(K_max, size=K, replace=False)
                 lo, hi = cl.sample_quantiles(test_s[:, idx, :], alpha)
                 m = cl.evaluate_intervals(lo, hi, test_fut, alpha)
-                out.append(dict(text=cond, K=K, rep=r,
-                                cov_perstep=m["coverage_perstep"],
-                                width=m["width"]))
-    return pd.DataFrame(out)
+                row = dict(text=cond, K=K, rep=r,
+                           cov_perstep=m["coverage_perstep"],
+                           cov_joint=m["coverage_joint"],
+                           width=m["width"],
+                           oracle_finite_K=fk.oracle_coverage(K, alpha),
+                           gap_vs_oracle=m["coverage_perstep"]
+                           - fk.oracle_coverage(K, alpha))
+                out.append(row)
+                if K == K_common:
+                    matched.append(row)
+    return pd.DataFrame(out), pd.DataFrame(matched), budgets
 
 
 # ---------------------------------------------------------------------------
@@ -450,9 +475,24 @@ def main():
     print("\n" + "=" * 78)
     print("[P5] sample budget K (alpha=0.10)")
     print("=" * 78)
-    ks = table_k_sweep(test_fut)
-    print(ks.groupby(["text", "K"])[["cov_perstep", "width"]]
-          .agg(["mean", "std"]).to_string(float_format=lambda v: f"{v:.4f}"))
+    ks, matched, budgets = table_k_sweep(test_fut)
+    print("Sample budget actually present in each cache:")
+    for c, k in sorted(budgets.items()):
+        print(f"  {c:<16} K = {k}")
+    if len(set(budgets.values())) > 1:
+        print("\n  WARNING: the conditions do NOT share a sample budget. Naive")
+        print("  width comparisons across conditions at native K confound the")
+        print("  text effect with a Monte Carlo effect. Use the matched-K table.")
+    print()
+    print(ks.groupby(["text", "K"])[["cov_perstep", "oracle_finite_K",
+                                     "gap_vs_oracle", "width"]]
+          .mean().to_string(float_format=lambda v: f"{v:.4f}"))
+    if not matched.empty:
+        K_common = int(matched["K"].iloc[0])
+        print(f"\nMATCHED-K comparison (all conditions subsampled to K={K_common}):")
+        print(matched.groupby("text")[["cov_perstep", "width"]]
+              .agg(["mean", "std"]).to_string(float_format=lambda v: f"{v:.4f}"))
+        matched.to_csv("rebuttal_ptf_ksweep_matched.csv", index=False)
     ks.to_csv("rebuttal_ptf_ksweep.csv", index=False)
 
     print("\n" + "=" * 78)
